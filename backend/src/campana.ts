@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { poolPromise, sql } from '../db'; // Importar correctamente la conexión a la base de datos
+import { poolPromise, sql } from '../db';
 import { authenticateToken, checkRole } from './index'; // Importa tus middlewares
 
 const router = Router();

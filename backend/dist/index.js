@@ -12,205 +12,141 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authenticateToken = authenticateToken;
-exports.checkRole = checkRole;
+exports.checkRole = exports.authenticateToken = void 0;
 const express_1 = __importDefault(require("express"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const dotenv_1 = __importDefault(require("dotenv"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const moment_1 = __importDefault(require("moment"));
-const client_1 = require("@prisma/client");
+const db_1 = require("../db");
+const dotenv_1 = __importDefault(require("dotenv"));
+const cors_1 = __importDefault(require("cors")); // Importa el paquete cors
 dotenv_1.default.config();
 const app = (0, express_1.default)();
-const prisma = new client_1.PrismaClient();
+app.use((0, cors_1.default)()); // Habilita CORS
 app.use(express_1.default.json());
-// Funciones de validación
-function isValidDPI(dpi) {
-    const regex = /^\d{13}$/;
-    return regex.test(dpi);
-}
-function isValidDate(date) {
-    const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-    if (!regex.test(date))
-        return false;
-    const [_, day, month, year] = regex.exec(date);
-    const birthDate = new Date(`${year}-${month}-${day}`);
-    const now = new Date();
-    return birthDate < now && birthDate > new Date("1900-01-01");
-}
-function isValidPassword(password) {
-    const regex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    return regex.test(password);
-}
-// Middleware de autenticación
-function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+// Middleware para autenticar el token
+const authenticateToken = (req, res, next) => {
+    var _a;
+    const token = (_a = req.headers['authorization']) === null || _a === void 0 ? void 0 : _a.split(' ')[1]; // Asumiendo que el token viene en el header 'Authorization'
     if (!token) {
-        res.sendStatus(401);
+        res.status(401).json({ message: 'Acceso denegado' });
         return;
     }
-    jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET, (err, user) => {
+    jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || 'default_secret', (err, user) => {
         if (err) {
-            res.sendStatus(403);
+            res.status(403).json({ message: 'Token inválido' });
             return;
         }
-        req.user = user;
-        next();
+        req.user = user; // Almacena la información del usuario en la solicitud
+        next(); // Importante: No devolvemos nada aquí, solo llamamos a next()
     });
-}
+};
+exports.authenticateToken = authenticateToken;
 // Middleware para verificar el rol
-function checkRole(role) {
+const checkRole = (role) => {
     return (req, res, next) => {
         var _a;
         if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== role) {
             res.status(403).json({ message: 'Acceso denegado' });
-            return; // Asegúrate de que haya un return aquí
+            return;
         }
-        next(); // Llama a next() para continuar
+        next(); // Importante: No devolvemos nada aquí, solo llamamos a next()
     };
-}
-// Endpoint para crear un usuario
+};
+exports.checkRole = checkRole;
+// Ruta para registrar un nuevo usuario
 app.post('/users', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { colegiado, name, email, dpi, birthDate, password, role } = req.body;
-    if (!colegiado || !name || !email || !dpi || !birthDate || !password || !role) {
-        res.status(400).json({ message: 'Todos los campos son requeridos' });
+    // Verificación de campos obligatorios
+    if (!colegiado || !name || !email || !dpi || !birthDate || !password) {
+        res.status(400).json({ message: 'Todos los campos son obligatorios' });
         return;
     }
-    if (!isValidDPI(dpi)) {
-        res.status(400).json({ message: 'DPI inválido' });
-        return;
-    }
-    if (!isValidDate(birthDate)) {
-        res.status(400).json({ message: 'Fecha de nacimiento inválida. Use formato DD/MM/AAAA' });
-        return;
-    }
-    if (!isValidPassword(password)) {
-        res.status(400).json({
-            message: 'La contraseña debe tener al menos 8 caracteres, incluir una letra mayúscula, una minúscula, un número y un carácter especial',
-        });
-        return;
-    }
-    const hashedPassword = yield bcrypt_1.default.hash(password, 10);
-    // Crear el usuario en la base de datos
-    const newUser = yield prisma.user.create({
-        data: { colegiado, name, email, dpi, birthDate, password: hashedPassword, role }
-    });
-    res.status(201).json({ message: 'Usuario creado exitosamente', user: newUser });
-}));
-// Endpoint para iniciar sesión y generar un token JWT
-app.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { colegiado, dpi, birthDate, password } = req.body;
-    // Validaciones
-    if (!/^\d+$/.test(colegiado)) {
-        res.status(400).json({ message: 'El número de colegiado debe ser numérico.' });
-        return;
-    }
-    if (!/^\d{13}$/.test(dpi)) {
-        res.status(400).json({ message: 'El DPI debe tener 13 dígitos.' });
-        return;
-    }
-    if (!(0, moment_1.default)(birthDate, 'DD/MM/YYYY', true).isValid()) {
-        res.status(400).json({ message: 'La fecha de nacimiento debe estar en formato dd/mm/yyyy.' });
-        return;
-    }
-    const user = yield prisma.user.findUnique({
-        where: { colegiado_dpi_birthDate: { colegiado, dpi, birthDate } }
-    });
-    if (!user || !(yield bcrypt_1.default.compare(password, user.password))) {
-        res.status(401).json({ message: 'Credenciales inválidas' });
-        return;
-    }
-    const token = jsonwebtoken_1.default.sign({ email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '30m' });
-    res.json({ message: `Bienvenido ${user.name}`, token });
-}));
-// Endpoint para emitir un voto
-app.post('/vote', authenticateToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    const { candidate } = req.body;
-    const userEmail = (_a = req.user) === null || _a === void 0 ? void 0 : _a.email;
-    const existingVote = yield prisma.vote.findUnique({
-        where: {
-            userEmail_candidate: {
-                userEmail: userEmail,
-                candidate,
-            },
-        },
-    });
-    if (existingVote) {
-        res.status(400).json({ message: 'Ya has emitido tu voto' });
-        return;
-    }
-    yield prisma.vote.create({
-        data: { userEmail: userEmail, candidate }
-    });
-    res.status(201).json({ message: 'Voto registrado con éxito' });
-}));
-// Endpoint para listar los resultados de la votación
-app.get('/results', authenticateToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const votes = yield prisma.vote.groupBy({
-            by: ['candidate'],
-            _count: {
-                candidate: true,
-            },
-        });
-        const results = votes.map((vote) => ({
-            candidate: vote.candidate,
-            count: vote._count.candidate,
-        }));
-        res.json(results);
+        const hashedPassword = yield bcrypt_1.default.hash(password, 10);
+        const pool = yield db_1.poolPromise;
+        const result = yield pool.request()
+            .input('colegiado', db_1.sql.VarChar, colegiado)
+            .input('name', db_1.sql.VarChar, name)
+            .input('email', db_1.sql.VarChar, email)
+            .input('dpi', db_1.sql.VarChar, dpi)
+            .input('birthDate', db_1.sql.Date, birthDate)
+            .input('password', db_1.sql.VarChar, hashedPassword)
+            .input('role', db_1.sql.VarChar, role || 'voter')
+            .query('INSERT INTO Users (colegiado, name, email, dpi, birthDate, password, role) OUTPUT INSERTED.id AS id, INSERTED.*');
+        res.status(201).json({ message: 'Usuario creado exitosamente', user: result.recordset[0] });
     }
     catch (error) {
-        res.status(500).json({ message: 'Error al obtener los resultados', error });
+        console.error('Error al crear el usuario:', error);
+        res.status(500).json({ message: 'Error al crear el usuario', error });
     }
 }));
-// Endpoint para actualizar un usuario
-app.put('/users/:dpi', authenticateToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { dpi } = req.params;
-    const { name, email, password, newDpi, birthDate } = req.body;
-    const user = yield prisma.user.findUnique({
-        where: { dpi }
-    });
-    if (!user) {
-        res.status(404).json({ message: 'Usuario no encontrado' });
+// Ruta para iniciar sesión
+app.post('/login', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        res.status(400).json({ message: 'Email y contraseña son obligatorios' });
         return;
     }
-    if (newDpi && (yield prisma.user.findUnique({ where: { dpi: newDpi } }))) {
-        res.status(400).json({ message: 'El nuevo DPI ya está registrado' });
-        return;
+    try {
+        const pool = yield db_1.poolPromise;
+        const result = yield pool.request()
+            .input('email', db_1.sql.VarChar, email)
+            .query('SELECT * FROM Users WHERE email = @email');
+        if (result.recordset.length === 0) {
+            res.status(401).json({ message: 'Email o contraseña incorrectos' });
+            return;
+        }
+        const user = result.recordset[0];
+        const match = yield bcrypt_1.default.compare(password, user.password);
+        if (!match) {
+            res.status(401).json({ message: 'Email o contraseña incorrectos' });
+            return;
+        }
+        const token = jsonwebtoken_1.default.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '1h' });
+        res.json({ message: 'Login exitoso', token });
     }
-    // Crear el objeto updatedUser, incluyendo birthDate si se proporciona
-    const updatedUser = Object.assign(Object.assign({}, user), { name: name || user.name, email: email || user.email, password: password ? yield bcrypt_1.default.hash(password, 10) : user.password, dpi: newDpi || dpi, birthDate: birthDate || user.birthDate });
-    yield prisma.user.update({
-        where: { dpi },
-        data: updatedUser
-    });
-    res.status(200).json({ message: 'Usuario actualizado correctamente', user: updatedUser });
+    catch (error) {
+        console.error('Error al iniciar sesión:', error);
+        res.status(500).json({ message: 'Error al iniciar sesión', error });
+    }
 }));
-// Endpoint para eliminar un usuario
-app.delete('/users/:dpi', authenticateToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { dpi } = req.params;
-    const user = yield prisma.user.findUnique({
-        where: { dpi }
-    });
-    if (!user) {
-        res.status(404).json({ message: 'Usuario no encontrado' });
-        return;
+// Ruta para obtener todos los usuarios (solo para administradores)
+app.get('/users', exports.authenticateToken, (0, exports.checkRole)('admin'), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const pool = yield db_1.poolPromise;
+        const result = yield pool.request().query('SELECT * FROM Users');
+        res.json(result.recordset);
     }
-    yield prisma.user.delete({
-        where: { dpi }
-    });
-    res.status(200).json({ message: `Usuario con DPI ${dpi} eliminado exitosamente` });
+    catch (error) {
+        console.error('Error al obtener los usuarios:', error);
+        res.status(500).json({ message: 'Error al obtener los usuarios', error });
+    }
 }));
-// Rutas para votantes y campañas
-app.get('/votantes', authenticateToken, checkRole('voter'), (req, res) => {
-    res.json({ message: 'Funciones de votante' });
+// Ruta para obtener un usuario específico
+app.get('/users/:id', exports.authenticateToken, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const userId = req.params.id;
+    try {
+        const pool = yield db_1.poolPromise;
+        const result = yield pool.request()
+            .input('id', db_1.sql.Int, userId)
+            .query('SELECT * FROM Users WHERE id = @id');
+        if (result.recordset.length === 0) {
+            res.status(404).json({ message: 'Usuario no encontrado' });
+            return;
+        }
+        res.json(result.recordset[0]);
+    }
+    catch (error) {
+        console.error('Error al obtener el usuario:', error);
+        res.status(500).json({ message: 'Error al obtener el usuario', error });
+    }
+}));
+// Middleware para manejar errores no encontrados
+app.use((req, res) => {
+    res.status(404).json({ message: 'Ruta no encontrada' });
 });
-app.get('/campañas', authenticateToken, checkRole('admin'), (req, res) => {
-    res.json({ message: 'Funciones de administración de campañas' });
-});
+// Iniciar el servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor escuchando en el puerto ${PORT}`);
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
 });

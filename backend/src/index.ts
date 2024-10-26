@@ -1,9 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import { poolPromise } from '../db';
+import { poolPromise, sql } from '../db';
 import dotenv from 'dotenv';
-import sql from 'mssql';
 import cors from 'cors'; // Importa el paquete cors
 
 dotenv.config();

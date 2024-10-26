@@ -1,8 +1,13 @@
-// db.d.ts
+// db.ts
+import { ConnectionPool, config } from 'mssql';
 
-declare module '../db' {
-    import { Pool } from 'mssql'; // or the appropriate type based on your DB library
+const poolPromise = new ConnectionPool(config)
+    .connect()
+    .then(pool => {
+        console.log('Connected to the database');
+        return pool;
+    })
+    .catch(err => console.log('Database connection failed: ', err));
 
-    export const poolPromise: Pool; // Export the poolPromise
-    // Add any other exports or types that you need
-}
+export { poolPromise };
+export * as sql from 'mssql'; // Exportar todas las funcionalidades de mssql
