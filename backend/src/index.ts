@@ -1,13 +1,15 @@
 import express, { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-const { poolPromise } = require('../db');
+import { poolPromise } from '../db';
 import dotenv from 'dotenv';
 import sql from 'mssql';
+import cors from 'cors'; // Importa el paquete cors
 
 dotenv.config();
 
 const app = express();
+app.use(cors()); // Habilita CORS
 app.use(express.json());
 
 // Middleware para autenticar el token

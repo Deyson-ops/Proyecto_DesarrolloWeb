@@ -26,8 +26,14 @@ router.post('/', authenticateToken, checkRole('admin'), async (req: Request, res
         const newCampaign = result.recordset[0];
 
         // Agregar candidatos a la campaña si existen
+
+        interface Candidate {
+            name: string;
+            party: string;
+        }
+        
         if (candidates && candidates.length > 0) {
-            const candidatePromises = candidates.map(candidate => {
+            const candidatePromises = candidates.map((candidate: Candidate) => {
                 return pool.request()
                     .input('Name', sql.VarChar, candidate.name)
                     .input('Party', sql.VarChar, candidate.party)
@@ -39,7 +45,6 @@ router.post('/', authenticateToken, checkRole('admin'), async (req: Request, res
             });
             await Promise.all(candidatePromises);
         }
-
         res.status(201).json(newCampaign);
     } catch (error) {
         console.error('Error al crear la campaña:', error);
