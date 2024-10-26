@@ -1,42 +1,46 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
-  provider = "sqlserver" 
+  provider = "sqlserver" // Cambia esto si usas otro tipo de base de datos
   url      = env("DATABASE_URL")
 }
 
+// Modelo de Usuarios
 model User {
-  id        Int      @id @default(autoincrement())
-  colegiado String  @unique  
-  name      String
-  email     String   @unique  
-  dpi       String   @unique  
-  birthDate DateTime
-  password  String
-  role      String   // Puedes definir roles más específicos si es necesario
-  votes     Vote[]   // Relación con los votos
+  id         Int    @id @default(autoincrement())
+  colegiado  String @unique
+  name       String
+  email      String @unique
+  dpi        String @unique
+  birthDate  DateTime
+  passwordHash String
+  role       String @default("voter") // Por defecto es "votante"
 }
 
+// Modelo de Campañas
 model Campaign {
-  id          Int      @id @default(autoincrement())
+  id          Int    @id @default(autoincrement())
   title       String
   description String
-  isActive    Boolean   @default(true) // Cambié el tipo de BIT a Boolean
-  votes       Vote[]    // Relación con los votos
+  isActive    Boolean @default(true) // Por defecto es activo
 }
 
+// Modelo de Candidatos
 model Candidate {
-  id         Int      @id @default(autoincrement())
+  id         Int    @id @default(autoincrement())
   name       String
-  campaignId Int
-  campaign   Campaign @relation(fields: [campaignId], references: [id]) // Asegúrate de que esta relación esté definida
+  campaignId Int    // Sin relación con Campaign
 }
 
+// Modelo de Votos
 model Vote {
-  id         Int       @id @default(autoincrement())
-  userEmail  String    // Referencia al correo del votante
-  candidateId Int
-  campaignId Int
-  user       User      @relation(fields: [userEmail], references: [email])
-  candidate  Candidate @relation(fields: [candidateId], references: [id])
-  campaign   Campaign  @relation(fields: [campaignId], references: [id])
+  id          Int    @id @default(autoincrement())
+  userEmail   String // Sin relación con User
+  candidateId Int    // Sin relación con Candidate
+  campaignId  Int    // Sin relación con Campaign
   @@unique([userEmail, campaignId]) // Asegura que el mismo usuario no vote más de una vez por campaña
 }
