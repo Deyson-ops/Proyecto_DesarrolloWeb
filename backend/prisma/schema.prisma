@@ -9,16 +9,14 @@ generator client {
 
 model User {
   id        Int      @id @default(autoincrement())
-  colegiado String   @unique
+  colegiado String  
   name      String
-  email     String   @unique
-  dpi       String   @unique
+  email     String   
+  dpi       String   
   birthDate String
   password  String
   role      String   // Puedes definir roles más específicos si es necesario
   createdAt DateTime @default(now())
-
-  @@unique([colegiado, dpi, birthDate]) // Asegura que la combinación de colegiado, dpi y birthDate sea única
 }
 
 
