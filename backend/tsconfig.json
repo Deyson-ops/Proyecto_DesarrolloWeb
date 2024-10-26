@@ -11,6 +11,11 @@
   },
   "include": [
     "src/**/*",
-    "src/@types/**/*" 
-, "db.js"  ]
+    "src/@types/**/*",
+    "db.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts"
+  ]
 }

@@ -17,31 +17,29 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
   if (!token) {
     res.status(401).json({ message: 'Acceso denegado' });
-    return;
+    return; // Asegúrate de que sea void aquí
   }
 
   jwt.verify(token, process.env.JWT_SECRET || 'default_secret', (err: any, user: any) => {
     if (err) {
       res.status(403).json({ message: 'Token inválido' });
-      return;
+      return; // Asegúrate de que sea void aquí
     }
-    req.user = user; // Almacena la información del usuario en la solicitud
+    req.user = user;
     next();
   });
 };
-
 
 // Middleware para verificar el rol
 export const checkRole = (role: string) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (req.user?.role !== role) {
       res.status(403).json({ message: 'Acceso denegado' });
-      return;
+      return; // Asegúrate de que sea void aquí
     }
     next();
   };
 };
-
 
 // Ruta para registrar un nuevo usuario
 app.post('/users', async (req: Request, res: Response): Promise<void> => {

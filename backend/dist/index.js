@@ -28,14 +28,14 @@ const authenticateToken = (req, res, next) => {
     const token = (_a = req.headers['authorization']) === null || _a === void 0 ? void 0 : _a.split(' ')[1];
     if (!token) {
         res.status(401).json({ message: 'Acceso denegado' });
-        return;
+        return; // Asegúrate de que sea void aquí
     }
     jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || 'default_secret', (err, user) => {
         if (err) {
             res.status(403).json({ message: 'Token inválido' });
-            return;
+            return; // Asegúrate de que sea void aquí
         }
-        req.user = user; // Almacena la información del usuario en la solicitud
+        req.user = user;
         next();
     });
 };
@@ -46,7 +46,7 @@ const checkRole = (role) => {
         var _a;
         if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== role) {
             res.status(403).json({ message: 'Acceso denegado' });
-            return;
+            return; // Asegúrate de que sea void aquí
         }
         next();
     };

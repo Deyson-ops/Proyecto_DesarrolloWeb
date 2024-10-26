@@ -6,9 +6,11 @@ const API_URL = 'https://proyecto-desarrolloweb.onrender.com';
 
 // Funciones para manejar usuarios
 export const createUser = async (userData) => {
-    return await axios.post(`${API_URL}/users`, userData);
+    return await axios.post(`${API_URL}/users`, {
+        ...userData,
+        role: userData.role || 'voter' // Asegúrate de que se establezca un rol por defecto
+    });
 };
-
 export const loginUser = async (credentials) => {
     return await axios.post(`${API_URL}/login`, credentials);
 };
