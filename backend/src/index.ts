@@ -1,298 +1,153 @@
 import express, { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
-import moment from 'moment';
-import { PrismaClient } from '@prisma/client';
+const { poolPromise } = require('../db');
+import dotenv from 'dotenv';
+import sql from 'mssql';
 
 dotenv.config();
+
 const app = express();
-const prisma = new PrismaClient();
 app.use(express.json());
 
-interface User {
-  colegiado: string;
-  name: string;
-  email: string;
-  dpi: string;
-  birthDate: string;
-  password: string;
-  role: 'admin' | 'voter'; // Agregar rol
-}
-
-interface RequestWithUser extends Request {
-  user?: { email: string; role: 'admin' | 'voter' };
-}
-
-interface Vote {
-  userEmail: string;
-  candidate: string;
-}
-
-// Funciones de validación
-function isValidDPI(dpi: string): boolean {
-  const regex = /^\d{13}$/;
-  return regex.test(dpi);
-}
-
-function isValidDate(date: string): boolean {
-  const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-  if (!regex.test(date)) return false;
-
-  const [_, day, month, year] = regex.exec(date)!;
-  const birthDate = new Date(`${year}-${month}-${day}`);
-  const now = new Date();
-  return birthDate < now && birthDate > new Date("1900-01-01");
-}
-
-function isValidPassword(password: string): boolean {
-  const regex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&.#])[A-Za-z\d@$!%*?&#.]{8,}$/;
-  return regex.test(password);
-}
-
-// Middleware de autenticación
-export function authenticateToken(req: RequestWithUser, res: Response, next: NextFunction): void {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+// Middleware para autenticar el token
+export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
+  const token = req.headers['authorization']?.split(' ')[1]; // Asumiendo que el token viene en el header 'Authorization'
 
   if (!token) {
-      res.sendStatus(401);
-      return;
+    res.status(401).json({ message: 'Acceso denegado' });
+    return;
   }
 
-  jwt.verify(token, process.env.JWT_SECRET as string, (err, user) => {
-      if (err) {
-          res.sendStatus(403);
-          return;
-      }
-      req.user = user as { email: string; role: 'admin' | 'voter' };
-      next();
+  jwt.verify(token, process.env.JWT_SECRET || 'default_secret', (err: any, user: any) => {
+    if (err) {
+      res.status(403).json({ message: 'Token inválido' });
+      return;
+    }
+    req.user = user; // Almacena la información del usuario en la solicitud
+    next(); // Importante: No devolvemos nada aquí, solo llamamos a next()
   });
-}
+};
 
 // Middleware para verificar el rol
-export function checkRole(role: 'admin' | 'voter') {
-  return (req: RequestWithUser, res: Response, next: NextFunction): void => {
-      if (req.user?.role !== role) {
-          res.status(403).json({ message: 'Acceso denegado' });
-          return; // Asegúrate de que haya un return aquí
-      }
-      next(); // Llama a next() para continuar
+export const checkRole = (role: string) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (req.user?.role !== role) {
+      res.status(403).json({ message: 'Acceso denegado' });
+      return;
+    }
+    next(); // Importante: No devolvemos nada aquí, solo llamamos a next()
   };
-}
+};
 
-// Endpoint para crear un usuario
+// Ruta para registrar un nuevo usuario
 app.post('/users', async (req: Request, res: Response): Promise<void> => {
   const { colegiado, name, email, dpi, birthDate, password, role } = req.body;
 
-  if (!colegiado || !name || !email || !dpi || !birthDate || !password || !role) {
-    res.status(400).json({ message: 'Todos los campos son requeridos' });
+  // Verificación de campos obligatorios
+  if (!colegiado || !name || !email || !dpi || !birthDate || !password) {
+    res.status(400).json({ message: 'Todos los campos son obligatorios' });
     return;
   }
 
-  if (!isValidDPI(dpi)) {
-    res.status(400).json({ message: 'DPI inválido' });
-    return;
-  }
-
-  if (!isValidDate(birthDate)) {
-    res.status(400).json({ message: 'Fecha de nacimiento inválida. Use formato DD/MM/AAAA' });
-    return;
-  }
-
-  if (!isValidPassword(password)) {
-    res.status(400).json({
-      message: 'La contraseña debe tener al menos 8 caracteres, incluir una letra mayúscula, una minúscula, un número y un carácter especial',
-    });
-    return;
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-  
-  // Crear el usuario en la base de datos
-  const newUser = await prisma.user.create({
-    data: { colegiado, name, email, dpi, birthDate, password: hashedPassword, role }
-  });
-
-  res.status(201).json({ message: 'Usuario creado exitosamente', user: newUser });
-});
-
-// Endpoint para iniciar sesión y generar un token JWT
-app.post('/login', async (req: Request, res: Response): Promise<void> => {
-  const { colegiado, dpi, birthDate, password } = req.body;
-
-  // Validaciones
-  if (!/^\d+$/.test(colegiado)) {
-    res.status(400).json({ message: 'El número de colegiado debe ser numérico.' });
-    return;
-  }
-
-  if (!/^\d{13}$/.test(dpi)) {
-    res.status(400).json({ message: 'El DPI debe tener 13 dígitos.' });
-    return;
-  }
-
-  if (!moment(birthDate, 'DD/MM/YYYY', true).isValid()) {
-    res.status(400).json({ message: 'La fecha de nacimiento debe estar en formato dd/mm/yyyy.' });
-    return;
-  }
-
-  const user = await prisma.user.findFirst({
-    where: {
-      colegiado: colegiado,
-      dpi: dpi,
-      birthDate: birthDate
-    }
-  });
-  
-
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    res.status(401).json({ message: 'Credenciales inválidas' });
-    return;
-  }
-
-  const token = jwt.sign({ email: user.email, role: user.role }, process.env.JWT_SECRET as string, { expiresIn: '30m' });
-  res.json({ message: `Bienvenido ${user.name}`, token });
-});
-
-// Endpoint para emitir un voto
-app.post('/vote', authenticateToken, async (req: RequestWithUser, res: Response): Promise<void> => {
-  const { candidate } = req.body;
-  const userEmail = req.user?.email;
-
-  const existingVote = await prisma.vote.findFirst({
-    where: {
-      userEmail: userEmail,
-      candidate: candidate
-    },
-  });
-  
-
-  if (existingVote) {
-    res.status(400).json({ message: 'Ya has emitido tu voto' });
-    return;
-  }
-
-  await prisma.vote.create({
-    data: { userEmail: userEmail!, candidate }
-  });
-
-  res.status(201).json({ message: 'Voto registrado con éxito' });
-});
-
-// Endpoint para listar los resultados de la votación
-app.get('/results', authenticateToken, async (req: RequestWithUser, res: Response): Promise<void> => {
   try {
-    const votes = await prisma.vote.groupBy({
-      by: ['candidate'],
-      _count: {
-        candidate: true,
-      },
-    });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const pool = await poolPromise;
 
-    interface VoteResult {
-      candidate: string;
-      _count: {
-        candidate: number;
-      };
+    const result = await pool.request()
+      .input('colegiado', sql.VarChar, colegiado)
+      .input('name', sql.VarChar, name)
+      .input('email', sql.VarChar, email)
+      .input('dpi', sql.VarChar, dpi)
+      .input('birthDate', sql.Date, birthDate)
+      .input('password', sql.VarChar, hashedPassword)
+      .input('role', sql.VarChar, role || 'voter')
+      .query('INSERT INTO Users (colegiado, name, email, dpi, birthDate, password, role) OUTPUT INSERTED.id AS id, INSERTED.*');
+
+    res.status(201).json({ message: 'Usuario creado exitosamente', user: result.recordset[0] });
+  } catch (error) {
+    console.error('Error al crear el usuario:', error);
+    res.status(500).json({ message: 'Error al crear el usuario', error });
+  }
+});
+
+// Ruta para iniciar sesión
+app.post('/login', async (req: Request, res: Response): Promise<void> => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json({ message: 'Email y contraseña son obligatorios' });
+    return;
+  }
+
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('email', sql.VarChar, email)
+      .query('SELECT * FROM Users WHERE email = @email');
+
+    if (result.recordset.length === 0) {
+      res.status(401).json({ message: 'Email o contraseña incorrectos' });
+      return;
     }
 
-    const results: { candidate: string; count: number }[] = votes.map((vote: VoteResult) => ({
-      candidate: vote.candidate,
-      count: vote._count.candidate,
-    }));
+    const user = result.recordset[0];
+    const match = await bcrypt.compare(password, user.password);
 
-    res.json(results);
+    if (!match) {
+      res.status(401).json({ message: 'Email o contraseña incorrectos' });
+      return;
+    }
+
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '1h' });
+    res.json({ message: 'Login exitoso', token });
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener los resultados', error });
+    console.error('Error al iniciar sesión:', error);
+    res.status(500).json({ message: 'Error al iniciar sesión', error });
   }
 });
 
-// Endpoint para actualizar un usuario
-app.put('/users/:dpi', authenticateToken, async (req: RequestWithUser, res: Response): Promise<void> => {
-  const { dpi } = req.params;
-  const { name, email, password, newDpi, newColeg, birthDate } = req.body;
-
-  // Buscar el usuario por DPI
-  const user = await prisma.user.findFirst({
-    where: { dpi } // Verificamos que el usuario existe
-  });
-
-  // Verificar si el usuario existe
-  if (!user) {
-    res.status(404).json({ message: 'Usuario no encontrado' });
-    return;
+// Ruta para obtener todos los usuarios (solo para administradores)
+app.get('/users', authenticateToken, checkRole('admin'), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query('SELECT * FROM Users');
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Error al obtener los usuarios:', error);
+    res.status(500).json({ message: 'Error al obtener los usuarios', error });
   }
-
-  // Verificar si el nuevo DPI o colegiado ya están en uso
-  if (newDpi && await prisma.user.findFirst({ where: { dpi: newDpi } })) {
-    res.status(400).json({ message: 'El nuevo DPI ya está registrado' });
-    return;
-  }
-
-  if (newColeg && await prisma.user.findFirst({ where: { colegiado: newColeg } })) {
-    res.status(400).json({ message: 'El nuevo colegiado ya está registrado' });
-    return;
-  }
-
-  // Crear el objeto updatedUser
-  const updatedUser: Partial<User> = {
-    colegiado: newColeg || user.colegiado,
-    name: name || user.name,
-    email: email || user.email,
-    dpi: newDpi || user.dpi,
-    birthDate: birthDate || user.birthDate,
-    password: password ? await bcrypt.hash(password, 10) : user.password,
-  };
-
-  // Actualizar el usuario utilizando su ID
-  await prisma.user.update({
-    where: { id: user.id }, // Usamos el ID para la búsqueda
-    data: updatedUser
-  });
-
-  res.status(200).json({ message: 'Usuario actualizado correctamente', user: updatedUser });
 });
 
+// Ruta para obtener un usuario específico
+app.get('/users/:id', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.params.id;
 
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .input('id', sql.Int, userId)
+      .query('SELECT * FROM Users WHERE id = @id');
 
-// Endpoint para eliminar un usuario
-app.delete('/users/:dpi', authenticateToken, async (req: RequestWithUser, res: Response): Promise<void> => {
-  const { dpi } = req.params;
+    if (result.recordset.length === 0) {
+      res.status(404).json({ message: 'Usuario no encontrado' });
+      return;
+    }
 
-  // Buscar el usuario por DPI
-  const user = await prisma.user.findFirst({
-    where: { dpi } // Utilizando findFirst para buscar un usuario por DPI
-  });
-
-  // Verificar si el usuario existe
-  if (!user) {
-    res.status(404).json({ message: 'Usuario no encontrado' });
-    return;
+    res.json(result.recordset[0]);
+  } catch (error) {
+    console.error('Error al obtener el usuario:', error);
+    res.status(500).json({ message: 'Error al obtener el usuario', error });
   }
-
-  // Eliminar el usuario
-  await prisma.user.delete({
-    where: { id: user.id } // Usamos el ID para eliminar al usuario
-  });
-
-  // Enviar respuesta exitosa
-  res.status(200).json({ message: `Usuario con DPI ${dpi} eliminado exitosamente` });
 });
 
-
-// Rutas para votantes y campañas
-app.get('/votantes', authenticateToken, checkRole('voter'), (req: RequestWithUser, res: Response) => {
-  res.json({ message: 'Funciones de votante' });
+// Middleware para manejar errores no encontrados
+app.use((req, res) => {
+  res.status(404).json({ message: 'Ruta no encontrada' });
 });
 
-app.get('/campañas', authenticateToken, checkRole('admin'), (req: RequestWithUser, res: Response) => {
-  res.json({ message: 'Funciones de administración de campañas' });
-});
-
+// Iniciar el servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
+  console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
-
-
