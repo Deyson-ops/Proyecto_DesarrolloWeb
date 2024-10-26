@@ -1,8 +1,18 @@
 // src/components/VoterDashboard.js
 import React, { useEffect, useState } from 'react';
-import { getVoterCampaigns, vote } from '../api/api';
+import { getVoterCampaigns, vote, updateCampaignStatus } from '../api/api';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    Tooltip,
+    Legend,
+    CartesianGrid,
+    ResponsiveContainer,
+} from 'recharts';
 
 const VoterDashboard = () => {
     const [campaigns, setCampaigns] = useState([]);
@@ -37,6 +47,19 @@ const VoterDashboard = () => {
         }
     };
 
+    const handleEndCampaign = async (campaignId) => {
+        if (window.confirm('¿Estás seguro de que deseas finalizar la campaña?')) {
+            try {
+                await updateCampaignStatus(campaignId, { status: 'closed' });
+                toast.success('Campaña finalizada');
+                setCampaigns(campaigns.filter(c => c.id !== campaignId)); // Opcional: quitar campaña de la vista
+            } catch (error) {
+                console.error('Error al finalizar la campaña', error);
+                toast.error('Error al finalizar la campaña');
+            }
+        }
+    };
+
     if (loading) {
         return <div className="container">Cargando campañas...</div>;
     }
@@ -55,13 +78,25 @@ const VoterDashboard = () => {
                                 {candidate.name}
                                 <button
                                     onClick={() => handleVote(candidate.id, campaign.id)}
-                                    disabled={votedCandidates.has(candidate.id)}
+                                    disabled={votedCandidates.has(candidate.id) || campaign.status !== 'enabled'}
                                 >
                                     Votar
                                 </button>
                             </li>
                         ))}
                     </ul>
+                    <h5>Resultados de Votación:</h5>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={campaign.candidates}>
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Legend />
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <Bar dataKey="votes" fill="#8884d8" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                    <button onClick={() => handleEndCampaign(campaign.id)}>Finalizar Campaña</button>
                 </div>
             ))}
             <ToastContainer />

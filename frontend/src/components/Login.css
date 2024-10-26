@@ -1,0 +1,14 @@
+/* src/components/Login.css */
+.text-center {
+    margin-top: 1rem; /* Espacio superior */
+}
+
+.text-center a {
+    color: #007bff; /* Color del enlace */
+    text-decoration: underline; /* Subrayado del enlace */
+    font-weight: bold; /* Negrita */
+}
+
+.text-center a:hover {
+    color: #0056b3; /* Color al pasar el mouse */
+}

@@ -7,22 +7,22 @@ const Navbar = () => {
     const location = useLocation();
 
     return (
-        <nav>
-            <ul className="navbar">
-                <li className={location.pathname === '/' ? 'active' : ''}>
-                    <Link to="/">Inicio</Link>
+        <nav className="navbar">
+            <ul className="navbar-list">
+                <li className={`navbar-item ${location.pathname === '/' ? 'active' : ''}`}>
+                    <Link to="/" className="navbar-link">Inicio</Link>
                 </li>
-                <li className={location.pathname === '/create-user' ? 'active' : ''}>
-                    <Link to="/create-user">Crear Usuario</Link>
+                <li className={`navbar-item ${location.pathname === '/create-user' ? 'active' : ''}`}>
+                    <Link to="/create-user" className="navbar-link">Crear Usuario</Link>
                 </li>
-                <li className={location.pathname === '/login' ? 'active' : ''}>
-                    <Link to="/login">Iniciar Sesión</Link>
+                <li className={`navbar-item ${location.pathname === '/login' ? 'active' : ''}`}>
+                    <Link to="/login" className="navbar-link">Iniciar Sesión</Link>
                 </li>
-                <li className={location.pathname === '/admin' ? 'active' : ''}>
-                    <Link to="/admin">Panel de Administración</Link>
+                <li className={`navbar-item ${location.pathname === '/admin' ? 'active' : ''}`}>
+                    <Link to="/admin" className="navbar-link">Panel de Administración</Link>
                 </li>
-                <li className={location.pathname === '/voter' ? 'active' : ''}>
-                    <Link to="/voter">Votación</Link>
+                <li className={`navbar-item ${location.pathname === '/voter' ? 'active' : ''}`}>
+                    <Link to="/voter" className="navbar-link">Votación</Link>
                 </li>
             </ul>
         </nav>

@@ -47,45 +47,64 @@ const Login = () => {
     };
 
     return (
-        <div className="container">
-            <h2>Iniciar Sesión</h2>
-            <form onSubmit={handleSubmit}>
-                <input 
-                    type="text" 
-                    name="colegiado" 
-                    placeholder="Colegiado" 
-                    onChange={handleChange} 
-                    value={credentials.colegiado} 
-                    required 
-                />
-                <input 
-                    type="text" 
-                    name="dpi" 
-                    placeholder="DPI" 
-                    onChange={handleChange} 
-                    value={credentials.dpi} 
-                    required 
-                />
-                <input 
-                    type="date" 
-                    name="birthDate" 
-                    placeholder="Fecha de Nacimiento" 
-                    onChange={handleChange} 
-                    value={credentials.birthDate} 
-                    required 
-                />
-                <input 
-                    type="password" 
-                    name="password" 
-                    placeholder="Contraseña" 
-                    onChange={handleChange} 
-                    value={credentials.password} 
-                    required 
-                />
-                <button type="submit" disabled={loading}>
+        <div className="container mt-5">
+            <h2 className="text-center mb-4">Iniciar Sesión</h2>
+            <form onSubmit={handleSubmit} className="bg-light p-4 rounded shadow">
+                <div className="mb-3">
+                    <label htmlFor="colegiado" className="form-label">Colegiado</label>
+                    <input 
+                        type="text" 
+                        className="form-control" 
+                        id="colegiado" 
+                        name="colegiado" 
+                        onChange={handleChange} 
+                        value={credentials.colegiado} 
+                        required 
+                    />
+                </div>
+                <div className="mb-3">
+                    <label htmlFor="dpi" className="form-label">DPI</label>
+                    <input 
+                        type="text" 
+                        className="form-control" 
+                        id="dpi" 
+                        name="dpi" 
+                        onChange={handleChange} 
+                        value={credentials.dpi} 
+                        required 
+                    />
+                </div>
+                <div className="mb-3">
+                    <label htmlFor="birthDate" className="form-label">Fecha de Nacimiento</label>
+                    <input 
+                        type="date" 
+                        className="form-control" 
+                        id="birthDate" 
+                        name="birthDate" 
+                        onChange={handleChange} 
+                        value={credentials.birthDate} 
+                        required 
+                    />
+                </div>
+                <div className="mb-3">
+                    <label htmlFor="password" className="form-label">Contraseña</label>
+                    <input 
+                        type="password" 
+                        className="form-control" 
+                        id="password" 
+                        name="password" 
+                        onChange={handleChange} 
+                        value={credentials.password} 
+                        required 
+                    />
+                </div>
+                <button type="submit" className="btn btn-primary w-100" disabled={loading}>
                     {loading ? 'Iniciando...' : 'Iniciar Sesión'}
                 </button>
             </form>
+            <div className="text-center mt-3">
+                <p>No tienes una cuenta? <a href="/create-user">Crear Usuario</a></p>
+            </div>
             <ToastContainer />
         </div>
     );

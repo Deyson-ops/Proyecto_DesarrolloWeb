@@ -1,7 +1,7 @@
-// src/components/CreateUser.js
 import React, { useState } from 'react';
 import { createUser } from '../api/api';
 import { toast } from 'react-toastify'; // Asegúrate de tener esta librería instalada
+import 'react-toastify/dist/ReactToastify.css';
 
 const CreateUser = () => {
     const [formData, setFormData] = useState({
@@ -25,8 +25,8 @@ const CreateUser = () => {
         e.preventDefault();
         setLoading(true); // Inicia carga
         try {
-            await createUser(formData);
-            toast.success('Usuario creado con éxito'); // Notificación de éxito
+            const response = await createUser(formData);
+            toast.success(`Usuario ${response.data.user.name} creado con éxito`); // Notificación de éxito
             setFormData({ // Reiniciar el formulario
                 colegiado: '',
                 name: '',
@@ -37,25 +37,95 @@ const CreateUser = () => {
                 role: 'voter', // Mantiene el rol como 'votante'
             });
         } catch (error) {
-            console.error('Error creando usuario', error);
-            toast.error('Error al crear usuario'); // Notificación de error
+            if (error.response) {
+                // Si el error es de respuesta, muestra el mensaje específico
+                toast.error(error.response.data.message || 'Error al crear usuario');
+            } else {
+                toast.error('Error inesperado al crear usuario'); // Notificación de error general
+            }
+            console.error('Error creando usuario', error); // Log del error
         } finally {
             setLoading(false); // Finaliza carga
         }
     };
 
     return (
-        <div className="container">
-            <h2>Crear Usuario</h2>
-            <form onSubmit={handleSubmit}>
-                <input type="text" name="colegiado" placeholder="Colegiado" onChange={handleChange} value={formData.colegiado} required />
-                <input type="text" name="name" placeholder="Nombre" onChange={handleChange} value={formData.name} required />
-                <input type="email" name="email" placeholder="Email" onChange={handleChange} value={formData.email} required />
-                <input type="text" name="dpi" placeholder="DPI" onChange={handleChange} value={formData.dpi} required />
-                <input type="date" name="birthDate" onChange={handleChange} value={formData.birthDate} required />
-                <input type="password" name="password" placeholder="Contraseña" onChange={handleChange} value={formData.password} required />
-                {/* Eliminar el campo de selección de rol */}
-                <button type="submit" disabled={loading}>
+        <div className="container mt-5">
+            <h2 className="text-center mb-4">Crear Usuario</h2>
+            <form onSubmit={handleSubmit} className="bg-light p-4 rounded shadow">
+                <div className="mb-3">
+                    <label htmlFor="colegiado" className="form-label">Colegiado</label>
+                    <input 
+                        type="text" 
+                        className="form-control" 
+                        id="colegiado" 
+                        name="colegiado" 
+                        onChange={handleChange} 
+                        value={formData.colegiado} 
+                        required 
+                    />
+                </div>
+                <div className="mb-3">
+                    <label htmlFor="name" className="form-label">Nombre</label>
+                    <input 
+                        type="text" 
+                        className="form-control" 
+                        id="name" 
+                        name="name" 
+                        onChange={handleChange} 
+                        value={formData.name} 
+                        required 
+                    />
+                </div>
+                <div className="mb-3">
+                    <label htmlFor="email" className="form-label">Email</label>
+                    <input 
+                        type="email" 
+                        className="form-control" 
+                        id="email" 
+                        name="email" 
+                        onChange={handleChange} 
+                        value={formData.email} 
+                        required 
+                    />
+                </div>
+                <div className="mb-3">
+                    <label htmlFor="dpi" className="form-label">DPI</label>
+                    <input 
+                        type="text" 
+                        className="form-control" 
+                        id="dpi" 
+                        name="dpi" 
+                        onChange={handleChange} 
+                        value={formData.dpi} 
+                        required 
+                    />
+                </div>
+                <div className="mb-3">
+                    <label htmlFor="birthDate" className="form-label">Fecha de Nacimiento</label>
+                    <input 
+                        type="date" 
+                        className="form-control" 
+                        id="birthDate" 
+                        name="birthDate" 
+                        onChange={handleChange} 
+                        value={formData.birthDate} 
+                        required 
+                    />
+                </div>
+                <div className="mb-3">
+                    <label htmlFor="password" className="form-label">Contraseña</label>
+                    <input 
+                        type="password" 
+                        className="form-control" 
+                        id="password" 
+                        name="password" 
+                        onChange={handleChange} 
+                        value={formData.password} 
+                        required 
+                    />
+                </div>
+                <button type="submit" className="btn btn-primary w-100" disabled={loading}>
                     {loading ? 'Creando...' : 'Crear Usuario'}
                 </button>
             </form>
