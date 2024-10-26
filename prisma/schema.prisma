@@ -1,0 +1,30 @@
+datasource db {
+  provider = "sqlserver" // Utiliza 'sqlserver' para SQL Server
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  colegiado String   @unique
+  name      String
+  email     String   @unique
+  dpi       String   @unique
+  birthDate String
+  password  String
+  role      String   // Puedes definir roles más específicos si es necesario
+  createdAt DateTime @default(now())
+
+  @@unique([colegiado, dpi, birthDate]) // Asegura que la combinación de colegiado, dpi y birthDate sea única
+}
+
+
+model Vote {
+  id         Int      @id @default(autoincrement())
+  userEmail  String   // Referencia al correo del votante
+  candidate  String
+  createdAt  DateTime @default(now())
+}

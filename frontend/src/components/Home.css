@@ -1,0 +1,42 @@
+/* src/components/Home.css */
+.home-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh; /* Ocupa toda la altura de la ventana */
+    background-color: #f0f8ff; /* Color de fondo suave */
+    text-align: center;
+}
+
+.home-title {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+}
+
+.home-description {
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+    color: #333; /* Color de texto */
+}
+
+.home-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Espacio entre botones */
+}
+
+.home-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff; /* Color del botón */
+    color: white;
+    text-decoration: none;
+    font-size: 1.1rem;
+    transition: background-color 0.3s ease;
+}
+
+.home-button:hover {
+    background-color: #0056b3; /* Color del botón al pasar el ratón */
+}

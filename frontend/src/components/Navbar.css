@@ -1,0 +1,23 @@
+/* src/components/Navbar.css */
+.navbar {
+    list-style: none;
+    display: flex;
+    justify-content: space-around;
+    padding: 1rem;
+    background-color: #007bff;
+}
+
+.navbar li {
+    margin: 0 10px;
+}
+
+.navbar a {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+}
+
+.navbar .active a {
+    font-weight: bold;
+    text-decoration: underline;
+}
