@@ -1,6 +1,6 @@
 // src/components/AdminDashboard.js
 import React, { useEffect, useState } from 'react';
-import { getCampaigns, createCampaign, closeCampaign, updateCampaignStatus } from '../api/api'; // Asegúrate de tener estas funciones en tu archivo API
+import { getCampaigns, createCampaign, closeCampaign, updateCampaignStatus } from '../api/api';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -9,6 +9,7 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [newCampaign, setNewCampaign] = useState({ title: '', description: '', enabled: false });
+    const [isLoadingAction, setIsLoadingAction] = useState(false); // Estado para las acciones
 
     useEffect(() => {
         const fetchCampaigns = async () => {
@@ -31,6 +32,7 @@ const AdminDashboard = () => {
         const confirmed = window.confirm('¿Estás seguro de que quieres cerrar esta campaña?');
         if (!confirmed) return;
 
+        setIsLoadingAction(true); // Iniciar carga
         try {
             await closeCampaign(id);
             toast.success('Campaña cerrada');
@@ -38,11 +40,14 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error('Error al cerrar la campaña', error);
             toast.error('Error al cerrar la campaña');
+        } finally {
+            setIsLoadingAction(false); // Finalizar carga
         }
     };
 
     const handleCreateCampaign = async (e) => {
         e.preventDefault();
+        setIsLoadingAction(true); // Iniciar carga
         try {
             const response = await createCampaign(newCampaign);
             setCampaigns([...campaigns, response.data]);
@@ -51,10 +56,13 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error('Error al crear la campaña', error);
             toast.error('Error al crear la campaña');
+        } finally {
+            setIsLoadingAction(false); // Finalizar carga
         }
     };
 
     const handleToggleStatus = async (campaign) => {
+        setIsLoadingAction(true); // Iniciar carga
         try {
             const updatedCampaign = { ...campaign, enabled: !campaign.enabled };
             await updateCampaignStatus(campaign.id, updatedCampaign);
@@ -63,6 +71,8 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error('Error al actualizar el estado de la campaña', error);
             toast.error('Error al actualizar el estado de la campaña');
+        } finally {
+            setIsLoadingAction(false); // Finalizar carga
         }
     };
 
@@ -82,10 +92,12 @@ const AdminDashboard = () => {
                                 <h4>{campaign.title}</h4>
                                 <p>{campaign.description}</p>
                                 <p>Estado: {campaign.enabled ? 'Habilitada' : 'Deshabilitada'}</p>
-                                <button onClick={() => handleToggleStatus(campaign)}>
+                                <button onClick={() => handleToggleStatus(campaign)} disabled={isLoadingAction}>
                                     {campaign.enabled ? 'Deshabilitar' : 'Habilitar'} Votación
                                 </button>
-                                <button onClick={() => handleCloseCampaign(campaign.id)}>Cerrar Campaña</button>
+                                <button onClick={() => handleCloseCampaign(campaign.id)} disabled={isLoadingAction}>
+                                    Cerrar Campaña
+                                </button>
                             </li>
                         ))}
                     </ul>
@@ -119,7 +131,7 @@ const AdminDashboard = () => {
                                 />
                             </label>
                         </div>
-                        <button type="submit">Crear Campaña</button>
+                        <button type="submit" disabled={isLoadingAction}>Crear Campaña</button>
                     </form>
                 </>
             )}

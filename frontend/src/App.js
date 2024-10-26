@@ -24,11 +24,19 @@ const App = () => {
             <Router>
                 <Navbar />
                 <Routes>
+
+                    <Route path="/create-user" element={<CreateUser />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="/voter" element={<VoterDashboard />} />
+
+                 {/*
                     <Route path="/create-user" element={<CreateUser />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/admin" element={<PrivateRoute role="admin"><AdminDashboard /></PrivateRoute>} />
                     <Route path="/voter" element={<PrivateRoute role="voter"><VoterDashboard /></PrivateRoute>} />
-                    {/* Cambia la página principal para usar el componente Home */}
+                    */}
+                    
                     <Route path="/" element={<Home />} />
                     <Route path="*" element={<h1>Página no encontrada</h1>} />
                 </Routes>

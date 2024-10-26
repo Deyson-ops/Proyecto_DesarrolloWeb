@@ -51,6 +51,23 @@ app.post('/users', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  // Validación del DPI
+  if (dpi.length !== 13) {
+    res.status(400).json({ message: 'El DPI debe tener exactamente 13 caracteres' });
+    return;
+  }
+
+  // Validación de la contraseña
+  const passwordRegex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>]).{2,}$/; // Al menos una mayúscula, un número y un carácter especial
+  const initialUpperCaseRegex = /^[A-Z]/; // Para verificar que la primera letra es mayúscula
+
+  if (!passwordRegex.test(password) || !initialUpperCaseRegex.test(password)) {
+    res.status(400).json({
+      message: 'La contraseña debe comenzar con una letra mayúscula, contener al menos un número y un carácter especial.',
+    });
+    return;
+  }
+
   try {
     const pool = await poolPromise;
 
@@ -81,6 +98,7 @@ app.post('/users', async (req: Request, res: Response): Promise<void> => {
     }
   }
 });
+
 
 import moment from 'moment';
 
